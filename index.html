@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>СтереоАрхітектор: Таємниці паралельних площин (10 клас)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts (Cyrillic support) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- jsPDF & html2canvas for crisp Cyrillic PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --secondary: #0ea5e9;
+      --accent: #10b981;
+      --dark: #0f172a;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+    .font-mono-math {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    canvas {
+      touch-action: none;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+      border-color: transparent;
+    }
+    .draggable-item {
+      cursor: grab;
+      user-select: none;
+      touch-action: manipulation;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .draggable-item:active {
+      cursor: grabbing;
+      transform: scale(0.98);
+    }
+    .draggable-item.selected-card {
+      border-color: #4f46e5 !important;
+      background-color: #eef2ff !important;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+    }
+    .drop-zone {
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .drop-zone.drag-over {
+      background-color: #e0e7ff;
+      border-color: #4f46e5;
+    }
+    /* Custom scrollbar for horizontal nav on mobile */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes pulseSoft {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .animate-pulse-soft {
+      animation: pulseSoft 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md text-white border-b border-slate-800 shadow-lg">
+    <div class="max-w-6xl mx-auto px-3 sm:px-6 py-3 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-400 flex items-center justify-center shrink-0 shadow-md">
+          <i data-lucide="box" class="w-5 h-5 sm:w-6 sm:h-6 text-white"></i>
+        </div>
+        <div class="truncate">
+          <h1 class="text-sm sm:text-lg font-extrabold tracking-tight leading-tight truncate">
+            СтереоАрхітектор
+          </h1>
+          <p class="text-[11px] sm:text-xs text-slate-400 truncate">
+            10 клас • Паралельні площини (підручник О.С. Істера)
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Score & Attempts Pill -->
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl px-2.5 py-1.5 flex items-center gap-2 text-xs sm:text-sm">
+          <span class="text-slate-400 hidden sm:inline">Бали:</span>
+          <span id="header-score" class="font-bold text-emerald-400 font-mono-math">0 / 12</span>
+          <span class="text-slate-600">|</span>
+          <span class="text-slate-400 hidden sm:inline">Спроби:</span>
+          <span id="header-attempts" class="font-bold text-cyan-400 font-mono-math">0</span>
+        </div>
+        <button onclick="switchTab(6)" class="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition shadow-sm">
+          <i data-lucide="file-down" class="w-4 h-4"></i>
+          <span class="hidden md:inline">PDF-звіт</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Horizontal Scrollable Stepper Tabs (Mobile Friendly) -->
+    <nav class="bg-slate-900 border-t border-slate-800/80">
+      <div class="max-w-6xl mx-auto px-2 sm:px-6 py-2 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar">
+        <button onclick="switchTab(0)" id="tab-btn-0" class="tab-btn active shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <i data-lucide="compass" class="w-4 h-4"></i> Старт
+        </button>
+        <button onclick="switchTab(1)" id="tab-btn-1" class="tab-btn shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <span class="w-5 h-5 rounded-full bg-slate-700/80 text-[11px] flex items-center justify-center font-bold">1</span>
+          3D-Площини
+        </button>
+        <button onclick="switchTab(2)" id="tab-btn-2" class="tab-btn shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <span class="w-5 h-5 rounded-full bg-slate-700/80 text-[11px] flex items-center justify-center font-bold">2</span>
+          3D-Теореми
+        </button>
+        <button onclick="switchTab(3)" id="tab-btn-3" class="tab-btn shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <span class="w-5 h-5 rounded-full bg-slate-700/80 text-[11px] flex items-center justify-center font-bold">3</span>
+          Пастки (DnD)
+        </button>
+        <button onclick="switchTab(4)" id="tab-btn-4" class="tab-btn shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <span class="w-5 h-5 rounded-full bg-slate-700/80 text-[11px] flex items-center justify-center font-bold">4</span>
+          Доведення (DnD)
+        </button>
+        <button onclick="switchTab(5)" id="tab-btn-5" class="tab-btn shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <span class="w-5 h-5 rounded-full bg-slate-700/80 text-[11px] flex items-center justify-center font-bold">5</span>
+          Задачі (SVG)
+        </button>
+        <button onclick="switchTab(6)" id="tab-btn-6" class="tab-btn shrink-0 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-slate-700 text-slate-300 flex items-center gap-1.5 transition">
+          <i data-lucide="award" class="w-4 h-4"></i> Підсумок та PDF
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-8">
+
+    <!-- ==================== TAB 0: WELCOME & STUDENT REGISTRATION ==================== -->
+    <section id="tab-0" class="tab-panel space-y-6">
+      <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-indigo-500/20 relative overflow-hidden">
+        <div class="max-w-3xl relative z-10 space-y-4">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 text-xs font-semibold">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Інтерактивний тренажер • Геометрія 10 клас
+          </span>
+          <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+            СтереоАрхітектор: Таємниці паралельних площин
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+            Досліджуй взаємне розміщення двох площин у просторі, перевіряй ознаку та властивості паралельних площин за програмою й підручником <strong>О.С. Істера</strong>. Усі твої спроби та проміжні бали фіксуються автоматично для формування фінального <strong>PDF-звіту</strong>.
+          </p>
+        </div>
+
+        <!-- Student Form -->
+        <div class="mt-6 sm:mt-8 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 sm:p-6 max-w-2xl">
+          <h3 class="text-sm sm:text-base font-bold text-white mb-3 flex items-center gap-2">
+            <i data-lucide="user-check" class="w-4 h-4 text-cyan-400"></i> Дані учня для сертифіката та PDF-звіту
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1 font-medium">Прізвище та ім'я учня</label>
+              <input type="text" id="student-name-start" oninput="syncStudentInfo('start')" placeholder="Наприклад: Коваленко Максим"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-600 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-400">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1 font-medium">Клас</label>
+              <input type="text" id="student-class-start" oninput="syncStudentInfo('start')" placeholder="Введіть клас (напр., 10-А)"
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-600 text-white placeholder-slate-400 text-sm focus:outline-none focus:border-cyan-400">
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button onclick="switchTab(1)" class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold px-6 py-3 rounded-xl text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg transition">
+              Розпочати дослідження <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+            <button onclick="openInfoModal('intro')" class="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white font-semibold px-4 py-3 rounded-xl text-sm flex items-center justify-center gap-2 border border-white/15 transition">
+              <i data-lucide="book-open" class="w-4 h-4 text-cyan-300"></i> Дізнайся більше: Короткий конспект
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overview Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div onclick="switchTab(1)" class="cursor-pointer bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition">
+          <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+            <i data-lucide="layers" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">1. 3D-Симуляція: Розміщення площин</h4>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">Керуй кутом нахилу та зсувом площин α і β, спостерігай за лінією перетину c та виконуй 2 місії (до 2 балів).</p>
+        </div>
+        <div onclick="switchTab(2)" class="cursor-pointer bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition">
+          <div class="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center mb-3">
+            <i data-lucide="cpu" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">2. 3D-Лабораторія ознак і властивостей</h4>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">Експериментуй із двома прямими, що перетинаються, січною площиною γ та відрізками між площинами (до 2 балів).</p>
+        </div>
+        <div onclick="switchTab(3)" class="cursor-pointer bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition">
+          <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
+            <i data-lucide="move" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">3. Drag-and-Drop: Пастки стереометрії</h4>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">Розсортуй 6 геометричних тверджень на істинні та хибні, оминаючи типові помилки (до 3 балів).</p>
+        </div>
+        <div onclick="switchTab(4)" class="cursor-pointer bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition">
+          <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
+            <i data-lucide="git-merge" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">4. Drag-and-Drop: Доведення на кубі</h4>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">Віднови логічний ланцюжок доведення паралельності протилежних граней куба за рисунком (до 2 балів).</p>
+        </div>
+        <div onclick="switchTab(5)" class="cursor-pointer bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+            <i data-lucide="ruler" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">5. Практикум із SVG-кресленнями</h4>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">Розв'яжи 3 опорні задачі за підручником Істера з динамічними кресленнями та підказками (до 3 балів).</p>
+        </div>
+        <div onclick="switchTab(6)" class="cursor-pointer bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-400 transition">
+          <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+            <i data-lucide="file-check-2" class="w-5 h-5"></i>
+          </div>
+          <h4 class="font-bold text-slate-900 text-base">6. Фінальний PDF-звіт учня</h4>
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">Переглянь журнал усіх спроб, підсумковий бал (до 12) та завантаж PDF на смартфон або комп'ютер.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 1: 3D SIMULATION 1 (MUTUAL POSITION) ==================== -->
+    <section id="tab-1" class="tab-panel hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Етап 1 • 3D-Симуляція №1</span>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900">Взаємне розміщення двох площин у просторі</h2>
+        </div>
+        <button onclick="openInfoModal('sim1')" class="self-start sm:self-auto bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 transition">
+          <i data-lucide="info" class="w-4 h-4"></i> Дізнайся більше
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- 3D Canvas Box -->
+        <div class="lg:col-span-7 bg-slate-900 rounded-2xl p-3 sm:p-4 shadow-lg border border-slate-800 flex flex-col">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2 px-1">
+            <span>👆 Перетягуй пальцем або мишею для обертання 3D-сцени</span>
+            <span id="sim1-status-badge" class="px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Перетинаються (α ∩ β = c)
+            </span>
+          </div>
+          <div class="relative w-full h-[270px] sm:h-[340px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+            <canvas id="canvas-sim1" class="w-full h-full block"></canvas>
+          </div>
+          <!-- Sliders -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 bg-slate-800/70 p-3 rounded-xl">
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Кут нахилу площини β:</span>
+                <span id="sim1-angle-val" class="font-mono-math font-bold text-cyan-400">35°</span>
+              </div>
+              <input type="range" id="sim1-angle" min="-60" max="60" value="35" oninput="updateSim1()"
+                class="w-full accent-cyan-400 cursor-pointer">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Вертикальний зсув (відстань):</span>
+                <span id="sim1-offset-val" class="font-mono-math font-bold text-emerald-400">0 од.</span>
+              </div>
+              <input type="range" id="sim1-offset" min="-80" max="80" value="0" oninput="updateSim1()"
+                class="w-full accent-emerald-400 cursor-pointer">
+            </div>
+          </div>
+        </div>
+
+        <!-- Missions Panel -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                <i data-lucide="target" class="w-5 h-5 text-indigo-600"></i> Інтерактивні місії (до 2 балів)
+              </h3>
+              <span id="sim1-score-badge" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono-math">0 / 2 бали</span>
+            </div>
+
+            <!-- Mission 1A -->
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <p class="text-xs sm:text-sm font-semibold text-slate-800">
+                <strong>Місія 1.1:</strong> Налаштуй повзунки так, щоб площини <span class="font-mono-math">α</span> і <span class="font-mono-math">β</span> стали <strong>паралельними</strong> (<span class="font-mono-math">α ∥ β</span>, не збігалися і не мали спільних точок).
+              </p>
+              <button onclick="checkSim1Mission(1)" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-3 rounded-lg text-xs sm:text-sm transition">
+                Перевірити паралельність
+              </button>
+              <p id="sim1-m1-feedback" class="text-xs font-medium hidden"></p>
+            </div>
+
+            <!-- Mission 1B -->
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <p class="text-xs sm:text-sm font-semibold text-slate-800">
+                <strong>Місія 1.2:</strong> Налаштуй площини так, щоб вони <strong>збігалися</strong> (<span class="font-mono-math">α = β</span>) і мали безліч спільних прямих.
+              </p>
+              <button onclick="checkSim1Mission(2)" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-3 rounded-lg text-xs sm:text-sm transition">
+                Перевірити збіг площин
+              </button>
+              <p id="sim1-m2-feedback" class="text-xs font-medium hidden"></p>
+            </div>
+
+            <!-- Quick Question -->
+            <div class="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+              <p class="text-xs text-amber-900 font-semibold">
+                💡 Спостереження: Чи можуть дві площини мати рівно одну спільну точку?
+              </p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkSim1Quick(false)" class="py-1.5 px-2 rounded-lg bg-white border border-amber-300 text-xs font-semibold text-slate-700 hover:bg-amber-100">Так, можуть</button>
+                <button onclick="checkSim1Quick(true)" class="py-1.5 px-2 rounded-lg bg-white border border-amber-300 text-xs font-semibold text-slate-700 hover:bg-amber-100">Ні, перетинаються по прямій</button>
+              </div>
+              <p id="sim1-quick-feedback" class="text-xs font-medium hidden"></p>
+            </div>
+          </div>
+
+          <div class="flex justify-between">
+            <button onclick="switchTab(0)" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-semibold hover:bg-slate-50">← Назад</button>
+            <button onclick="switchTab(2)" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold hover:bg-slate-800">Далі: 3D-Теореми →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: 3D SIMULATION 2 (CRITERION & PROPERTIES) ==================== -->
+    <section id="tab-2" class="tab-panel hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-cyan-600">Етап 2 • 3D-Симуляція №2</span>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900">Ознака та властивості паралельних площин</h2>
+        </div>
+        <button onclick="openInfoModal('sim2')" class="self-start sm:self-auto bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 transition">
+          <i data-lucide="info" class="w-4 h-4"></i> Дізнайся більше
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- 3D Canvas Box -->
+        <div class="lg:col-span-7 bg-slate-900 rounded-2xl p-3 sm:p-4 shadow-lg border border-slate-800 flex flex-col">
+          <!-- Mode Switcher -->
+          <div class="grid grid-cols-3 gap-1.5 mb-2.5">
+            <button onclick="setSim2Mode(1)" id="sim2-mode-1" class="py-2 px-2 rounded-xl text-xs font-bold bg-indigo-600 text-white transition">
+              Теорема 1 (Ознака)
+            </button>
+            <button onclick="setSim2Mode(2)" id="sim2-mode-2" class="py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+              Теорема 2 (Січна γ)
+            </button>
+            <button onclick="setSim2Mode(3)" id="sim2-mode-3" class="py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+              Теорема 3 (Відрізки)
+            </button>
+          </div>
+
+          <div class="relative w-full h-[270px] sm:h-[330px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+            <canvas id="canvas-sim2" class="w-full h-full block"></canvas>
+          </div>
+
+          <!-- Dynamic Control for Current Mode -->
+          <div class="mt-3 bg-slate-800/70 p-3 rounded-xl">
+            <div class="flex justify-between text-xs text-slate-300 mb-1">
+              <span id="sim2-slider-label">Кут між прямими a₁ та b₁ у площині α:</span>
+              <span id="sim2-slider-val" class="font-mono-math font-bold text-cyan-400">60°</span>
+            </div>
+            <input type="range" id="sim2-slider" min="0" max="90" value="60" oninput="updateSim2()"
+              class="w-full accent-indigo-400 cursor-pointer">
+            <p id="sim2-live-note" class="text-xs text-emerald-300 mt-1.5 font-medium">
+              Прямі a₁ ∩ b₁ = M, a₁ ∥ a₂, b₁ ∥ b₂ ⇒ площини α і β гарантовано паралельні!
+            </p>
+          </div>
+        </div>
+
+        <!-- Lab Verification Tasks -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3.5">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+                <i data-lucide="flask-conical" class="w-5 h-5 text-cyan-600"></i> Лабораторний практикум (до 2 балів)
+              </h3>
+              <span id="sim2-score-badge" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-mono-math">0 / 2 бали</span>
+            </div>
+
+            <!-- Experiment 1 -->
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <p class="text-xs sm:text-sm font-semibold text-slate-800">
+                <strong>Експеримент 2.1 (Теорема 1):</strong> Установи кут між прямими <span class="font-mono-math">a₁</span> і <span class="font-mono-math">b₁</span> рівним <strong>0°</strong> (вони стануть паралельними). Чи гарантує це тепер, що <span class="font-mono-math">α ∥ β</span>?
+              </p>
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="checkSim2Exp1(false)" class="py-2 px-2.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold hover:bg-indigo-50">Так, гарантує</button>
+                <button onclick="checkSim2Exp1(true)" class="py-2 px-2.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold hover:bg-indigo-50">Ні, площини можуть перетнутися!</button>
+              </div>
+              <p id="sim2-e1-feedback" class="text-xs font-medium hidden"></p>
+            </div>
+
+            <!-- Experiment 2 -->
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <p class="text-xs sm:text-sm font-semibold text-slate-800">
+                <strong>Експеримент 2.2 (Теореми 2 і 3):</strong> Перемкнись на <em>Теорему 3</em>. Якщо відрізок <span class="font-mono-math">A₁A₂ = 14 см</span>, а <span class="font-mono-math">A₁B₁ ∥ A₂B₂</span>, чому дорівнює <span class="font-mono-math">B₁B₂</span> (у см)?
+              </p>
+              <div class="flex gap-2">
+                <input type="number" id="sim2-exp2-input" placeholder="Відповідь (см)"
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono-math focus:outline-none focus:border-indigo-500">
+                <button onclick="checkSim2Exp2()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg text-xs sm:text-sm shrink-0">
+                  Перевірити
+                </button>
+              </div>
+              <p id="sim2-e2-feedback" class="text-xs font-medium hidden"></p>
+            </div>
+          </div>
+
+          <div class="flex justify-between">
+            <button onclick="switchTab(1)" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-semibold hover:bg-slate-50">← Назад</button>
+            <button onclick="switchTab(3)" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold hover:bg-slate-800">Далі: Пастки (DnD) →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: DRAG & DROP 1 (TRUE/FALSE TRAPS) ==================== -->
+    <section id="tab-3" class="tab-panel hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Етап 3 • Інтерактив Drag-and-Drop №1</span>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900">«Пастки стереометрії»: Істина чи Хиба?</h2>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Перетягни картку у відповідний кошик (або натисни на картку, а потім на потрібну зону).</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="dnd1-score-badge" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-mono-math">0 / 3 бали</span>
+          <button onclick="openInfoModal('dnd1')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 transition">
+            <i data-lucide="info" class="w-4 h-4"></i> Дізнайся більше
+          </button>
+        </div>
+      </div>
+
+      <!-- Cards Pool -->
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Нерозподілені твердження:</h3>
+        <div id="dnd1-pool" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 min-h-[70px]">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Drop Zones -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- TRUE Zone -->
+        <div id="dnd1-zone-true" onclick="handleZoneTap('dnd1', 'true')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropDnd1(event, 'true')"
+          class="drop-zone bg-emerald-50/60 border-2 border-dashed border-emerald-400 rounded-2xl p-4 min-h-[200px] flex flex-col">
+          <div class="flex items-center gap-2 text-emerald-800 font-extrabold text-sm sm:text-base mb-3">
+            <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i> ІСТИННІ ТВЕРДЖЕННЯ (Завжди виконуються)
+          </div>
+          <div id="dnd1-list-true" class="space-y-2 flex-1"></div>
+        </div>
+
+        <!-- FALSE Zone -->
+        <div id="dnd1-zone-false" onclick="handleZoneTap('dnd1', 'false')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropDnd1(event, 'false')"
+          class="drop-zone bg-rose-50/60 border-2 border-dashed border-rose-400 rounded-2xl p-4 min-h-[200px] flex flex-col">
+          <div class="flex items-center gap-2 text-rose-800 font-extrabold text-sm sm:text-base mb-3">
+            <i data-lucide="x-circle" class="w-5 h-5 text-rose-600"></i> ХИБНІ ТВЕРДЖЕННЯ (Геометричні пастки)
+          </div>
+          <div id="dnd1-list-false" class="space-y-2 flex-1"></div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex gap-2">
+          <button onclick="checkDnd1()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow transition">
+            Перевірити сортування
+          </button>
+          <button onclick="resetDnd1()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition">
+            Скинути
+          </button>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="switchTab(2)" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-semibold">← Назад</button>
+          <button onclick="switchTab(4)" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold">Далі: Доведення →</button>
+        </div>
+      </div>
+      <div id="dnd1-feedback" class="hidden p-4 rounded-2xl text-xs sm:text-sm font-medium"></div>
+    </section>
+
+    <!-- ==================== TAB 4: DRAG & DROP 2 + SVG PROOF ==================== -->
+    <section id="tab-4" class="tab-panel hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-purple-600">Етап 4 • Інтерактив Drag-and-Drop №2 + SVG-рисунок</span>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900">Конструктор доведення паралельності площин</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="dnd2-score-badge" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-mono-math">0 / 2 бали</span>
+          <button onclick="openInfoModal('dnd2')" class="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 transition">
+            <i data-lucide="info" class="w-4 h-4"></i> Дізнайся більше
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- SVG Illustration of Cube ABCDA1B1C1D1 -->
+        <div class="lg:col-span-5 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Рисунок до задачі: Куб ABCDA₁B₁C₁D₁</span>
+          <svg viewBox="0 0 320 290" class="w-full max-w-[300px] h-auto">
+            <!-- Shaded Plane (AA1D1) - left face -->
+            <polygon points="60,90 120,45 120,185 60,230" fill="#818cf8" fill-opacity="0.22" stroke="#4f46e5" stroke-width="2"/>
+            <!-- Shaded Plane (BB1C1) - right face -->
+            <polygon points="200,90 260,45 260,185 200,230" fill="#34d399" fill-opacity="0.22" stroke="#059669" stroke-width="2"/>
+            <!-- Hidden edges -->
+            <line x1="120" y1="185" x2="260" y2="185" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5,4"/>
+            <line x1="120" y1="45" x2="120" y2="185" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="5,4"/>
+            <line x1="60" y1="230" x2="120" y2="185" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="5,4"/>
+            <!-- Visible edges -->
+            <line x1="60" y1="90" x2="200" y2="90" stroke="#1e293b" stroke-width="2"/>
+            <line x1="60" y1="230" x2="200" y2="230" stroke="#1e293b" stroke-width="2"/>
+            <line x1="120" y1="45" x2="260" y2="45" stroke="#1e293b" stroke-width="2"/>
+            <!-- Highlighted parallel pairs -->
+            <line x1="60" y1="90" x2="60" y2="230" stroke="#4f46e5" stroke-width="3"/>
+            <line x1="200" y1="90" x2="200" y2="230" stroke="#059669" stroke-width="3"/>
+            <line x1="60" y1="90" x2="120" y2="45" stroke="#4f46e5" stroke-width="3"/>
+            <line x1="200" y1="90" x2="260" y2="45" stroke="#059669" stroke-width="3"/>
+            <!-- Labels -->
+            <text x="42" y="238" font-size="14" font-weight="bold" fill="#0f172a">A</text>
+            <text x="204" y="242" font-size="14" font-weight="bold" fill="#0f172a">B</text>
+            <text x="266" y="190" font-size="14" font-weight="bold" fill="#0f172a">C</text>
+            <text x="104" y="182" font-size="14" font-weight="bold" fill="#64748b">D</text>
+            <text x="38" y="88" font-size="14" font-weight="bold" fill="#4f46e5">A₁</text>
+            <text x="204" y="85" font-size="14" font-weight="bold" fill="#059669">B₁</text>
+            <text x="265" y="45" font-size="14" font-weight="bold" fill="#059669">C₁</text>
+            <text x="112" y="36" font-size="14" font-weight="bold" fill="#4f46e5">D₁</text>
+          </svg>
+          <p class="text-xs text-slate-600 text-center mt-2">
+            <strong>Завдання:</strong> Доведи, що площини протилежних граней куба <span class="font-mono-math">(AA₁D₁)</span> та <span class="font-mono-math">(BB₁C₁)</span> паралельні, розставивши 4 кроки доведення у правильному логічному порядку.
+          </p>
+        </div>
+
+        <!-- Proof Steps Builder -->
+        <div class="lg:col-span-7 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Доступні логічні блоки (натисни або перетягни у слоти 1–4):</h3>
+            <div id="dnd2-pool" class="grid grid-cols-1 gap-2"></div>
+          </div>
+
+          <div class="space-y-2.5">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-600">Ланцюжок доведення:</h3>
+            <div id="dnd2-slots" class="space-y-2">
+              <!-- 4 slots generated by JS -->
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button onclick="checkDnd2()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow transition">
+              Перевірити доведення
+            </button>
+            <button onclick="resetDnd2()" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition">
+              Очистити слоти
+            </button>
+          </div>
+          <div id="dnd2-feedback" class="hidden p-3.5 rounded-xl text-xs sm:text-sm font-medium"></div>
+        </div>
+      </div>
+
+      <div class="flex justify-between">
+        <button onclick="switchTab(3)" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-semibold">← Назад</button>
+        <button onclick="switchTab(5)" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold">Далі: Задачі (SVG) →</button>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 5: PRACTICE PROBLEMS WITH SVG ==================== -->
+    <section id="tab-5" class="tab-panel hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-600">Етап 5 • Задачі за підручником О.С. Істера</span>
+          <h2 class="text-lg sm:text-2xl font-extrabold text-slate-900">Практикум із геометричними кресленнями</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="tasks-score-badge" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 font-mono-math">0 / 3 бали</span>
+          <button onclick="openInfoModal('tasks')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 transition">
+            <i data-lucide="info" class="w-4 h-4"></i> Дізнайся більше
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Problem 1: Pyramid Section -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-xs">Задача 1</span>
+              <span id="p1-status" class="text-xs font-bold text-slate-400">1 бал</span>
+            </div>
+            <!-- SVG Pyramid SABC with parallel section A1B1C1 -->
+            <svg viewBox="0 0 260 200" class="w-full h-40 bg-slate-50 rounded-xl border border-slate-100">
+              <polygon points="40,165 220,165 150,185" fill="#cbd5e1" fill-opacity="0.35" stroke="#475569" stroke-width="1.5"/>
+              <line x1="40" y1="165" x2="220" y2="165" stroke="#94a3b8" stroke-dasharray="4,3"/>
+              <!-- Apex S -->
+              <line x1="130" y1="22" x2="40" y2="165" stroke="#1e293b" stroke-width="1.8"/>
+              <line x1="130" y1="22" x2="220" y2="165" stroke="#1e293b" stroke-width="1.8"/>
+              <line x1="130" y1="22" x2="150" y2="185" stroke="#1e293b" stroke-width="1.8"/>
+              <!-- Section A1B1C1 -->
+              <polygon points="85,93 175,93 140,103" fill="#6366f1" fill-opacity="0.3" stroke="#4f46e5" stroke-width="2"/>
+              <text x="125" y="16" font-size="12" font-weight="bold">S</text>
+              <text x="27" y="170" font-size="12" font-weight="bold">A</text>
+              <text x="224" y="170" font-size="12" font-weight="bold">C</text>
+              <text x="148" y="197" font-size="12" font-weight="bold">B</text>
+              <text x="65" y="92" font-size="11" font-weight="bold" fill="#4f46e5">A₁</text>
+              <text x="179" y="92" font-size="11" font-weight="bold" fill="#4f46e5">C₁</text>
+              <text x="136" y="116" font-size="11" font-weight="bold" fill="#4f46e5">B₁</text>
+            </svg>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              Площина, паралельна основі <span class="font-mono-math">ABC</span> піраміди <span class="font-mono-math">SABC</span>, перетинає бічні ребра в точках <span class="font-mono-math">A₁, B₁, C₁</span> так, що <span class="font-mono-math">SA₁ : A₁A = 2 : 3</span>. Знайдіть <span class="font-mono-math">A₁B₁</span> (у см), якщо <span class="font-mono-math">AB = 25 см</span>.
+            </p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex gap-2">
+              <input type="number" id="p1-input" placeholder="Відповідь (см)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-mono-math">
+              <button onclick="checkProblem(1, 10)" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm">ОК</button>
+            </div>
+            <button onclick="toggleHint(1)" class="text-xs text-indigo-600 font-semibold hover:underline">Показати підказку</button>
+            <p id="p1-hint" class="hidden text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+              За властивістю паралельних площин <span class="font-mono-math">A₁B₁ ∥ AB</span>, отже <span class="font-mono-math">△SA₁B₁ ~ △SAB</span>. Зверніть увагу: <span class="font-mono-math">SA = SA₁ + A₁A = 2 + 3 = 5</span> частин!
+            </p>
+            <p id="p1-feedback" class="text-xs font-medium hidden"></p>
+          </div>
+        </div>
+
+        <!-- Problem 2: Parallel rays intersecting two parallel planes -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 font-bold text-xs">Задача 2</span>
+              <span id="p2-status" class="text-xs font-bold text-slate-400">1 бал</span>
+            </div>
+            <!-- SVG Two parallel planes cut by two rays from O -->
+            <svg viewBox="0 0 260 200" class="w-full h-40 bg-slate-50 rounded-xl border border-slate-100">
+              <!-- Plane alpha -->
+              <polygon points="35,75 215,75 235,55 55,55" fill="#0ea5e9" fill-opacity="0.18" stroke="#0284c7" stroke-width="1.5"/>
+              <text x="220" y="72" font-size="12" font-weight="bold" fill="#0284c7">α</text>
+              <!-- Plane beta -->
+              <polygon points="25,155 215,155 240,130 50,130" fill="#10b981" fill-opacity="0.18" stroke="#059669" stroke-width="1.5"/>
+              <text x="222" y="150" font-size="12" font-weight="bold" fill="#059669">β</text>
+              <!-- Point O -->
+              <circle cx="120" cy="18" r="3" fill="#0f172a"/>
+              <text x="126" y="21" font-size="12" font-weight="bold">O</text>
+              <!-- Rays -->
+              <line x1="120" y1="18" x2="72" y2="145" stroke="#1e293b" stroke-width="1.8"/>
+              <line x1="120" y1="18" x2="178" y2="145" stroke="#1e293b" stroke-width="1.8"/>
+              <!-- Segments in planes -->
+              <line x1="101" y1="66" x2="142" y2="66" stroke="#4f46e5" stroke-width="2.5"/>
+              <line x1="72" y1="145" x2="178" y2="145" stroke="#059669" stroke-width="2.5"/>
+              <text x="83" y="63" font-size="11" font-weight="bold">A₁</text>
+              <text x="146" y="63" font-size="11" font-weight="bold">B₁</text>
+              <text x="54" y="146" font-size="11" font-weight="bold">A₂</text>
+              <text x="182" y="146" font-size="11" font-weight="bold">B₂</text>
+            </svg>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              Два промені зі спільним початком <span class="font-mono-math">O</span> перетинають паралельні площини <span class="font-mono-math">α</span> і <span class="font-mono-math">β</span> у точках <span class="font-mono-math">A₁, B₁</span> та <span class="font-mono-math">A₂, B₂</span>. Знайдіть <span class="font-mono-math">A₂B₂</span> (у см), якщо <span class="font-mono-math">OA₁ = 4 см</span>, <span class="font-mono-math">A₁A₂ = 8 см</span>, <span class="font-mono-math">A₁B₁ = 5 см</span>.
+            </p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex gap-2">
+              <input type="number" id="p2-input" placeholder="Відповідь (см)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-mono-math">
+              <button onclick="checkProblem(2, 15)" class="bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm">ОК</button>
+            </div>
+            <button onclick="toggleHint(2)" class="text-xs text-cyan-700 font-semibold hover:underline">Показати підказку</button>
+            <p id="p2-hint" class="hidden text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+              Площина променів <span class="font-mono-math">(OA₂B₂)</span> перетинає <span class="font-mono-math">α ∥ β</span> по паралельних прямих <span class="font-mono-math">A₁B₁ ∥ A₂B₂</span>. Отже, <span class="font-mono-math">OA₁ / OA₂ = A₁B₁ / A₂B₂</span>, де <span class="font-mono-math">OA₂ = 4 + 8 = 12 см</span>.
+            </p>
+            <p id="p2-feedback" class="text-xs font-medium hidden"></p>
+          </div>
+        </div>
+
+        <!-- Problem 3: Parallelogram / Triangle in space -->
+        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs">Задача 3</span>
+              <span id="p3-status" class="text-xs font-bold text-slate-400">1 бал</span>
+            </div>
+            <!-- SVG Parallel segments between parallel planes -->
+            <svg viewBox="0 0 260 200" class="w-full h-40 bg-slate-50 rounded-xl border border-slate-100">
+              <polygon points="30,60 210,60 235,38 55,38" fill="#818cf8" fill-opacity="0.18" stroke="#4f46e5" stroke-width="1.5"/>
+              <text x="218" y="55" font-size="12" font-weight="bold" fill="#4f46e5">α</text>
+              <polygon points="30,165 210,165 235,143 55,143" fill="#f59e0b" fill-opacity="0.18" stroke="#d97706" stroke-width="1.5"/>
+              <text x="218" y="160" font-size="12" font-weight="bold" fill="#d97706">β</text>
+              <!-- Parallel segments AC and BD -->
+              <line x1="80" y1="50" x2="65" y2="154" stroke="#0f172a" stroke-width="2.2"/>
+              <line x1="175" y1="50" x2="160" y2="154" stroke="#0f172a" stroke-width="2.2"/>
+              <line x1="80" y1="50" x2="175" y2="50" stroke="#4f46e5" stroke-width="2" stroke-dasharray="4,2"/>
+              <line x1="65" y1="154" x2="160" y2="154" stroke="#d97706" stroke-width="2" stroke-dasharray="4,2"/>
+              <text x="66" y="48" font-size="12" font-weight="bold">A</text>
+              <text x="180" y="48" font-size="12" font-weight="bold">B</text>
+              <text x="50" y="158" font-size="12" font-weight="bold">C</text>
+              <text x="165" y="158" font-size="12" font-weight="bold">D</text>
+            </svg>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+              Паралельні відрізки <span class="font-mono-math">AC</span> і <span class="font-mono-math">BD</span> містяться між паралельними площинами <span class="font-mono-math">α</span> і <span class="font-mono-math">β</span>. Знайдіть периметр чотирикутника <span class="font-mono-math">ABDC</span> (у см), якщо <span class="font-mono-math">AC = 9 см</span>, а <span class="font-mono-math">AB = 6 см</span>.
+            </p>
+          </div>
+          <div class="space-y-2">
+            <div class="flex gap-2">
+              <input type="number" id="p3-input" placeholder="Периметр (см)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-mono-math">
+              <button onclick="checkProblem(3, 30)" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 py-2 rounded-xl text-xs sm:text-sm">ОК</button>
+            </div>
+            <button onclick="toggleHint(3)" class="text-xs text-emerald-700 font-semibold hover:underline">Показати підказку</button>
+            <p id="p3-hint" class="hidden text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+              Відрізки паралельних прямих між паралельними площинами рівні (<span class="font-mono-math">BD = AC = 9 см</span>), а лінії перетину <span class="font-mono-math">AB ∥ CD</span>, тому <span class="font-mono-math">ABDC</span> — паралелограм зі сторонами 9 см і 6 см.
+            </p>
+            <p id="p3-feedback" class="text-xs font-medium hidden"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-between">
+        <button onclick="switchTab(4)" class="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs sm:text-sm font-semibold">← Назад</button>
+        <button onclick="switchTab(6)" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs sm:text-sm font-bold shadow">Перейти до PDF-звіту →</button>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 6: SUMMARY & PDF EXPORT ==================== -->
+    <section id="tab-6" class="tab-panel hidden space-y-6">
+      <div class="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Фінальний кабінет • Підсумки роботи</span>
+            <h2 class="text-xl sm:text-3xl font-extrabold text-slate-900">Результати учня та генерація PDF-звіту</h2>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+              Перевір свої дані та натисни кнопку «Завантажити PDF-звіт», щоб зберегти документ на смартфон або комп'ютер.
+            </p>
+          </div>
+          <button onclick="generatePDFReport()" id="download-pdf-btn"
+            class="animate-pulse-soft bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-extrabold px-6 py-3.5 rounded-2xl text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg transition shrink-0">
+            <i data-lucide="download" class="w-5 h-5"></i> Завантажити PDF-звіт
+          </button>
+        </div>
+
+        <!-- Student Credentials Sync Box -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Прізвище та ім'я учня (для PDF):</label>
+            <input type="text" id="student-name-end" oninput="syncStudentInfo('end')" placeholder="Введіть прізвище та ім'я"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm font-medium focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Клас:</label>
+            <input type="text" id="student-class-end" oninput="syncStudentInfo('end')" placeholder="Введіть клас (напр., 10-А)"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm font-medium focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- Printable Report Preview Card (Used to render crisp PDF) -->
+        <div id="pdf-printable-area" class="bg-white border-2 border-slate-200 rounded-2xl p-5 sm:p-8 space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-indigo-600 pb-4">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Геометрія • 10 клас • Підручник О.С. Істера</p>
+              <h3 class="text-lg sm:text-2xl font-extrabold text-slate-900 mt-0.5">Звіт про виконання інтерактивного тренажера</h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-1">Тема: «Розміщення двох площин у просторі. Ознаки та властивості паралельних площин»</p>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3 text-center shrink-0">
+              <span class="block text-[11px] font-bold uppercase text-indigo-600">Підсумкова оцінка</span>
+              <span id="report-total-score" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono-math">0 / 12</span>
+              <span class="block text-[11px] text-slate-500">балів</span>
+            </div>
+          </div>
+
+          <!-- Student Metadata Row -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs sm:text-sm">
+            <div>
+              <span class="text-slate-500 block text-xs">Учень / учениця:</span>
+              <strong id="report-student-name" class="text-slate-900 text-sm sm:text-base">Не вказано</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-xs">Клас:</span>
+              <strong id="report-student-class" class="text-slate-900 text-sm sm:text-base">—</strong>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-xs">Дата та час проходження:</span>
+              <strong id="report-date" class="text-slate-900 text-sm sm:text-base">—</strong>
+            </div>
+          </div>
+
+          <!-- Stage Breakdown Table -->
+          <div>
+            <h4 class="text-sm font-extrabold text-slate-800 mb-2.5">Проміжні результати за етапами:</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="bg-slate-900 text-white">
+                    <th class="p-2.5 sm:p-3 rounded-tl-xl">Етап тренажера</th>
+                    <th class="p-2.5 sm:p-3 text-center">Кількість спроб</th>
+                    <th class="p-2.5 sm:p-3 text-center">Статус</th>
+                    <th class="p-2.5 sm:p-3 text-right rounded-tr-xl">Бали</th>
+                  </tr>
+                </thead>
+                <tbody id="report-stages-tbody" class="divide-y divide-slate-200 border-x border-b border-slate-200">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Detailed Attempt Log -->
+          <div>
+            <h4 class="text-sm font-extrabold text-slate-800 mb-2">Журнал зафіксованих спроб учня:</h4>
+            <div id="report-attempts-log" class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 max-h-60 overflow-y-auto space-y-1.5 text-xs text-slate-700 font-mono-math">
+              <p class="text-slate-400 italic">Спроб ще не зафіксовано. Виконайте завдання у вкладках 1–5.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== "LEARN MORE" MODAL ==================== -->
+  <div id="info-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      <div class="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5 text-cyan-400"></i>
+          <h3 id="modal-title" class="font-bold text-base sm:text-lg">Дізнайся більше</h3>
+        </div>
+        <button onclick="closeInfoModal()" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="modal-body" class="p-5 sm:p-6 overflow-y-auto text-sm text-slate-700 space-y-3 leading-relaxed">
+        <!-- Injected content -->
+      </div>
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <button onclick="closeInfoModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2 rounded-xl text-sm">
+          Зрозуміло
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // ==================== STATE MANAGEMENT ====================
+    const state = {
+      studentName: '',
+      studentClass: '',
+      scores: {
+        sim1_m1: 0, // 0.75
+        sim1_m2: 0, // 0.75
+        sim1_q: 0,  // 0.5  -> Total Stage 1 = 2
+        sim2_e1: 0, // 1
+        sim2_e2: 0, // 1    -> Total Stage 2 = 2
+        dnd1: 0,    // up to 3 -> Total Stage 3 = 3
+        dnd2: 0,    // up to 2 -> Total Stage 4 = 2
+        p1: 0,      // 1
+        p2: 0,      // 1
+        p3: 0       // 1    -> Total Stage 5 = 3
+      },
+      attempts: {
+        stage1: 0,
+        stage2: 0,
+        stage3: 0,
+        stage4: 0,
+        stage5: 0
+      },
+      log: []
+    };
+
+    function getStageScores() {
+      const s1 = +(state.scores.sim1_m1 + state.scores.sim1_m2 + state.scores.sim1_q).toFixed(2);
+      const s2 = +(state.scores.sim2_e1 + state.scores.sim2_e2).toFixed(2);
+      const s3 = +state.scores.dnd1.toFixed(2);
+      const s4 = +state.scores.dnd2.toFixed(2);
+      const s5 = +(state.scores.p1 + state.scores.p2 + state.scores.p3).toFixed(2);
+      const total = Math.round((s1 + s2 + s3 + s4 + s5) * 10) / 10;
+      return { s1, s2, s3, s4, s5, total };
+    }
+
+    function recordAttempt(stageKey, stageLabel, actionDesc, isSuccess) {
+      state.attempts[stageKey]++;
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      state.log.unshift({
+        time: timeStr,
+        stage: stageLabel,
+        desc: actionDesc,
+        success: isSuccess
+      });
+      updateDashboardUI();
+    }
+
+    function updateDashboardUI() {
+      const { s1, s2, s3, s4, s5, total } = getStageScores();
+      const totalAttempts = Object.values(state.attempts).reduce((a, b) => a + b, 0);
+
+      document.getElementById('header-score').textContent = `${total} / 12`;
+      document.getElementById('header-attempts').textContent = totalAttempts;
+
+      document.getElementById('sim1-score-badge').textContent = `${s1} / 2 бали`;
+      document.getElementById('sim2-score-badge').textContent = `${s2} / 2 бали`;
+      document.getElementById('dnd1-score-badge').textContent = `${s3} / 3 бали`;
+      document.getElementById('dnd2-score-badge').textContent = `${s4} / 2 бали`;
+      document.getElementById('tasks-score-badge').textContent = `${s5} / 3 бали`;
+
+      // Update Report Card
+      document.getElementById('report-total-score').textContent = `${total} / 12`;
+      document.getElementById('report-student-name').textContent = state.studentName.trim() || 'Учень 10 класу (ім’я не вказано)';
+      document.getElementById('report-student-class').textContent = state.studentClass.trim() || 'Не вказано';
+      document.getElementById('report-date').textContent = new Date().toLocaleString('uk-UA', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      const stagesData = [
+        { name: '1. 3D-Симуляція: Взаємне розміщення площин', att: state.attempts.stage1, sc: s1, max: 2 },
+        { name: '2. 3D-Лабораторія: Ознака та властивості', att: state.attempts.stage2, sc: s2, max: 2 },
+        { name: '3. Drag-and-Drop: Пастки стереометрії', att: state.attempts.stage3, sc: s3, max: 3 },
+        { name: '4. Drag-and-Drop: Конструктор доведення', att: state.attempts.stage4, sc: s4, max: 2 },
+        { name: '5. Практикум із задач (SVG-креслення)', att: state.attempts.stage5, sc: s5, max: 3 }
+      ];
+
+      const tbody = document.getElementById('report-stages-tbody');
+      tbody.innerHTML = stagesData.map(st => {
+        const statusBadge = st.sc >= st.max
+          ? '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-xs">Виконано</span>'
+          : (st.att > 0
+            ? '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-xs">У процесі</span>'
+            : '<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-xs">Не розпочато</span>');
+        return `
+          <tr>
+            <td class="p-2.5 sm:p-3 font-medium text-slate-800">${st.name}</td>
+            <td class="p-2.5 sm:p-3 text-center font-mono-math">${st.att}</td>
+            <td class="p-2.5 sm:p-3 text-center">${statusBadge}</td>
+            <td class="p-2.5 sm:p-3 text-right font-bold font-mono-math text-slate-900">${st.sc} / ${st.max}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const logEl = document.getElementById('report-attempts-log');
+      if (state.log.length > 0) {
+        logEl.innerHTML = state.log.map((item, idx) => `
+          <div class="flex items-start justify-between gap-2 border-b border-slate-200/70 pb-1">
+            <span>
+              <strong class="text-slate-500">[${item.time}]</strong>
+              <span class="font-bold text-indigo-700">${item.stage}:</span> ${item.desc}
+            </span>
+            <span class="${item.success ? 'text-emerald-600 font-bold' : 'text-rose-600'} shrink-0">
+              ${item.success ? '✓ Вірно' : '✗ Помилка'}
+            </span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function syncStudentInfo(source) {
+      if (source === 'start') {
+        state.studentName = document.getElementById('student-name-start').value;
+        state.studentClass = document.getElementById('student-class-start').value;
+        document.getElementById('student-name-end').value = state.studentName;
+        document.getElementById('student-class-end').value = state.studentClass;
+      } else {
+        state.studentName = document.getElementById('student-name-end').value;
+        state.studentClass = document.getElementById('student-class-end').value;
+        document.getElementById('student-name-start').value = state.studentName;
+        document.getElementById('student-class-start').value = state.studentClass;
+      }
+      updateDashboardUI();
+    }
+
+    // ==================== TAB NAVIGATION ====================
+    function switchTab(index) {
+      document.querySelectorAll('.tab-panel').forEach((el, i) => {
+        el.classList.toggle('hidden', i !== index);
+      });
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+      if (index === 1) resizeCanvas1();
+      if (index === 2) resizeCanvas2();
+      if (index === 6) updateDashboardUI();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ==================== LEARN MORE MODAL CONTENT ====================
+    const infoContents = {
+      intro: {
+        title: 'Довідник за підручником О.С. Істера (10 клас)',
+        html: `
+          <p><strong>1. Взаємне розміщення двох площин у просторі:</strong></p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>Збігаються</strong> — мають безліч спільних точок і спільних прямих (<span class="font-mono-math">α = β</span>).</li>
+            <li><strong>Перетинаються</strong> — мають спільну пряму (<span class="font-mono-math">α ∩ β = c</span>). За аксіомою стереометрії дві площини не можуть мати лише одну спільну точку!</li>
+            <li><strong>Паралельні</strong> — не мають жодної спільної точки (<span class="font-mono-math">α ∥ β</span>).</li>
+          </ul>
+          <p class="mt-2"><strong>2. Ознака паралельності площин (Теорема):</strong> Якщо дві прямі, які перетинаються, однієї площини відповідно паралельні двом прямим другої площини, то ці площини паралельні.</p>
+          <p class="mt-2"><strong>3. Властивості паралельних площин:</strong></p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>Якщо дві паралельні площини перетнути третьою, то прямі їх перетину паралельні.</li>
+            <li>Відрізки паралельних прямих, які містяться між двома паралельними площинами, рівні.</li>
+          </ul>
+        `
+      },
+      sim1: {
+        title: 'Дізнайся більше: Три випадки розміщення двох площин',
+        html: `
+          <p>У стереометрії (Геометрія, 10 клас, § 5 за підручником О.С. Істера) розглядають <strong>три випадки</strong> взаємного розміщення двох площин <span class="font-mono-math">α</span> та <span class="font-mono-math">β</span>:</p>
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <p><strong>Випадок 1:</strong> Площини <em>збігаються</em> (<span class="font-mono-math">α = β</span>). У симуляції це відповідає куту нахилу <span class="font-mono-math">0°</span> та нульовому зсуву (<span class="font-mono-math">0 од.</span>).</p>
+            <p><strong>Випадок 2:</strong> Площини <em>перетинаються по прямій</em> (<span class="font-mono-math">α ∩ β = c</span>). Якщо площини мають хоча б одну спільну точку, то за аксіомою С3 вони перетинаються по прямій, що проходить через цю точку.</p>
+            <p><strong>Випадок 3:</strong> Площини <em>паралельні</em> (<span class="font-mono-math">α ∥ β</span>), якщо вони не мають спільних точок. У симуляції кут нахилу має дорівнювати <span class="font-mono-math">0°</span>, а відстань (зсув) повинна бути відмінною від нуля.</p>
+          </div>
+        `
+      },
+      sim2: {
+        title: 'Дізнайся більше: Чому прямі мають перетинатися?',
+        html: `
+          <p><strong>Ознака паралельності двох площин:</strong> Якщо дві прямі <span class="font-mono-math">a₁</span> і <span class="font-mono-math">b₁</span>, які <em>перетинаються</em>, площини <span class="font-mono-math">α</span> відповідно паралельні двом прямим <span class="font-mono-math">a₂</span> і <span class="font-mono-math">b₂</span> площини <span class="font-mono-math">β</span>, то <span class="font-mono-math">α ∥ β</span>.</p>
+          <p class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-amber-900">
+            <strong>Важливий нюанс!</strong> Умова <em>«прямі перетинаються»</em> є критичною. Якщо взяти в площині <span class="font-mono-math">α</span> безліч паралельних між собою прямих (як у книжці біля корінця), кожна з них може бути паралельною прямій у площині <span class="font-mono-math">β</span>, але самі площини при цьому перетинатимуться по корінцю!
+          </p>
+          <p><strong>Властивість 1:</strong> Якщо <span class="font-mono-math">α ∥ β</span> і площина <span class="font-mono-math">γ</span> перетинає їх по прямих <span class="font-mono-math">a</span> і <span class="font-mono-math">b</span>, то <span class="font-mono-math">a ∥ b</span>.</p>
+          <p><strong>Властивість 2:</strong> Відрізки паралельних прямих, кінці яких належать двом паралельним площинам, рівні між собою.</p>
+        `
+      },
+      dnd1: {
+        title: 'Дізнайся більше: Розбір типових помилок на ЗНО/НМТ',
+        html: `
+          <ul class="list-disc pl-5 space-y-2">
+            <li><strong>Пастка №1:</strong> «Якщо пряма площини α паралельна площині β, то α ∥ β» — <em>Хиба!</em> Дві площини можуть перетинатися, а в одній із них легко провести пряму, паралельну лінії їх перетину (а отже, й другій площині).</li>
+            <li><strong>Пастка №2:</strong> «Дві площини, паралельні одній і тій самій прямій, паралельні між собою» — <em>Хиба!</em> Уявіть дві сусідні стіни кімнати: обидві паралельні вертикальному ребру протилежного кута, але самі стіни перпендикулярні й перетинаються.</li>
+            <li><strong>Правильне твердження:</strong> Дві площини, паралельні третій площині, паралельні між собою (транзитивність паралельності площин).</li>
+          </ul>
+        `
+      },
+      dnd2: {
+        title: 'Дізнайся більше: Як оформлювати доведення в 10 класі',
+        html: `
+          <p>Щоб бездоганно довести паралельність двох площин <span class="font-mono-math">(AA₁D₁)</span> і <span class="font-mono-math">(BB₁C₁)</span> у кубі, потрібно чітко виконати 4 кроки:</p>
+          <ol class="list-decimal pl-5 space-y-1.5">
+            <li>Знайти першу пару паралельних ребер у відповідних гранях (наприклад, <span class="font-mono-math">AA₁ ∥ BB₁</span> як протилежні сторони квадрата <span class="font-mono-math">AA₁B₁B</span>).</li>
+            <li>Знайти другу пару паралельних ребер (наприклад, <span class="font-mono-math">A₁D₁ ∥ B₁C₁</span> як протилежні сторони квадрата <span class="font-mono-math">A₁B₁C₁D₁</span>).</li>
+            <li>Обов'язково вказати, що обрані прямі в одній площині <strong>перетинаються</strong> (<span class="font-mono-math">AA₁ ∩ A₁D₁ = A₁</span>) і лежать у відповідних площинах.</li>
+            <li>Зробити висновок за <strong>ознакою паралельності площин</strong>.</li>
+          </ol>
+        `
+      },
+      tasks: {
+        title: 'Дізнайся більше: Алгоритми розв’язування опорних задач',
+        html: `
+          <p><strong>1. Переріз піраміди площиною, паралельною основі:</strong> Якщо площина перетинає бічні ребра піраміди і паралельна основі, то вона відтинає подібну піраміду. Коефіцієнт подібності <span class="font-mono-math">k = SA₁ / SA</span>.</p>
+          <p><strong>2. Теорема про пропорційні відрізки у просторі:</strong> Паралельні площини відтинають на сторонах кута (або на двох променях зі спільним початком) пропорційні відрізки, а трикутники у перерізах подібні.</p>
+          <p><strong>3. Паралельні відрізки між паралельними площинами:</strong> Через дві паралельні прямі <span class="font-mono-math">AC</span> і <span class="font-mono-math">BD</span> можна провести єдину площину. Вона перетне <span class="font-mono-math">α</span> і <span class="font-mono-math">β</span> по паралельних прямих <span class="font-mono-math">AB</span> і <span class="font-mono-math">CD</span>, утворюючи паралелограм <span class="font-mono-math">ABDC</span>.</p>
+        `
+      }
+    };
+
+    function openInfoModal(key) {
+      const data = infoContents[key];
+      document.getElementById('modal-title').textContent = data.title;
+      document.getElementById('modal-body').innerHTML = data.html;
+      document.getElementById('info-modal').classList.remove('hidden');
+    }
+    function closeInfoModal() {
+      document.getElementById('info-modal').classList.add('hidden');
+    }
+
+    // ==================== 3D ENGINE HELPER (CANVAS) ====================
+    function project3D(x, y, z, rotX, rotY, cx, cy, scale) {
+      // Rotate around Y
+      const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+      const x1 = x * cosY - z * sinY;
+      const z1 = x * sinY + z * cosY;
+      // Rotate around X
+      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      const y2 = y * cosX - z1 * sinX;
+      const z2 = y * sinX + z1 * cosX;
+
+      const fov = 480;
+      const factor = fov / (fov + z2 + 240);
+      return {
+        x: cx + x1 * factor * scale,
+        y: cy + y2 * factor * scale
+      };
+    }
+
+    function setupCanvasRotation(canvas, rotObj, drawFn) {
+      let dragging = false;
+      let lastX = 0, lastY = 0;
+
+      const startDrag = (clientX, clientY) => {
+        dragging = true;
+        lastX = clientX;
+        lastY = clientY;
+      };
+      const moveDrag = (clientX, clientY) => {
+        if (!dragging) return;
+        const dx = clientX - lastX;
+        const dy = clientY - lastY;
+        rotObj.y += dx * 0.01;
+        rotObj.x = Math.max(-1.2, Math.min(1.2, rotObj.x + dy * 0.01));
+        lastX = clientX;
+        lastY = clientY;
+        drawFn();
+      };
+      const endDrag = () => { dragging = false; };
+
+      canvas.addEventListener('mousedown', e => startDrag(e.clientX, e.clientY));
+      window.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
+      window.addEventListener('mouseup', endDrag);
+
+      canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+      canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 1) moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+      canvas.addEventListener('touchend', endDrag);
+    }
+
+    // ==================== SIMULATION 1: MUTUAL POSITION ====================
+    const c1 = document.getElementById('canvas-sim1');
+    const ctx1 = c1.getContext('2d');
+    const rot1 = { x: 0.42, y: -0.55 };
+
+    function resizeCanvas1() {
+      const rect = c1.parentElement.getBoundingClientRect();
+      c1.width = rect.width * window.devicePixelRatio;
+      c1.height = rect.height * window.devicePixelRatio;
+      drawSim1();
+    }
+
+    function updateSim1() {
+      const angle = parseInt(document.getElementById('sim1-angle').value, 10);
+      const offset = parseInt(document.getElementById('sim1-offset').value, 10);
+      document.getElementById('sim1-angle-val').textContent = `${angle}°`;
+      document.getElementById('sim1-offset-val').textContent = `${offset} од.`;
+
+      const badge = document.getElementById('sim1-status-badge');
+      if (angle === 0 && offset === 0) {
+        badge.textContent = 'Збігаються (α = β)';
+        badge.className = 'px-2.5 py-0.5 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30';
+      } else if (angle === 0 && offset !== 0) {
+        badge.textContent = 'Паралельні (α ∥ β)';
+        badge.className = 'px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      } else {
+        badge.textContent = 'Перетинаються (α ∩ β = c)';
+        badge.className = 'px-2.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+      }
+      drawSim1();
+    }
+
+    function drawSim1() {
+      const w = c1.width, h = c1.height;
+      if (!w || !h) return;
+      ctx1.clearRect(0, 0, w, h);
+      const cx = w / 2, cy = h / 2;
+      const scale = Math.min(w, h) / 310;
+
+      const angleDeg = parseInt(document.getElementById('sim1-angle').value, 10);
+      const offset = parseInt(document.getElementById('sim1-offset').value, 10);
+      const rad = (angleDeg * Math.PI) / 180;
+
+      const size = 120;
+      // Plane Alpha (horizontal y = 0)
+      const alphaPts = [
+        [-size, 0, -size],
+        [size, 0, -size],
+        [size, 0, size],
+        [-size, 0, size]
+      ].map(p => project3D(p[0], p[1], p[2], rot1.x, rot1.y, cx, cy, scale));
+
+      // Draw Alpha
+      ctx1.beginPath();
+      alphaPts.forEach((pt, i) => i === 0 ? ctx1.moveTo(pt.x, pt.y) : ctx1.lineTo(pt.x, pt.y));
+      ctx1.closePath();
+      ctx1.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx1.fill();
+      ctx1.strokeStyle = '#38bdf8';
+      ctx1.lineWidth = 2 * window.devicePixelRatio;
+      ctx1.stroke();
+
+      // Label Alpha
+      ctx1.fillStyle = '#7dd3fc';
+      ctx1.font = `bold ${14 * window.devicePixelRatio}px Inter, sans-serif`;
+      ctx1.fillText('α', alphaPts[2].x + 8, alphaPts[2].y);
+
+      // Plane Beta (tilted around Z axis by rad, shifted by -offset in Y)
+      const cosA = Math.cos(rad), sinA = Math.sin(rad);
+      const betaRaw = [
+        [-size, 0, -size],
+        [size, 0, -size],
+        [size, 0, size],
+        [-size, 0, size]
+      ].map(([x, y, z]) => {
+        const rx = x * cosA;
+        const ry = x * sinA - offset;
+        return [rx, ry, z];
+      });
+      const betaPts = betaRaw.map(p => project3D(p[0], p[1], p[2], rot1.x, rot1.y, cx, cy, scale));
+
+      ctx1.beginPath();
+      betaPts.forEach((pt, i) => i === 0 ? ctx1.moveTo(pt.x, pt.y) : ctx1.lineTo(pt.x, pt.y));
+      ctx1.closePath();
+      ctx1.fillStyle = (angleDeg === 0 && offset === 0)
+        ? 'rgba(168, 85, 247, 0.35)'
+        : 'rgba(16, 185, 129, 0.28)';
+      ctx1.fill();
+      ctx1.strokeStyle = '#10b981';
+      ctx1.lineWidth = 2 * window.devicePixelRatio;
+      ctx1.stroke();
+
+      ctx1.fillStyle = '#6ee7b7';
+      ctx1.fillText('β', betaPts[1].x + 8, betaPts[1].y);
+
+      // Draw Intersection Line c if angleDeg !== 0
+      if (angleDeg !== 0) {
+        // Intersection occurs where y = 0 => x * sinA - offset = 0 => x = offset / sinA
+        const ix = offset / sinA;
+        if (Math.abs(ix) <= size) {
+          const pStart = project3D(ix, 0, -size - 15, rot1.x, rot1.y, cx, cy, scale);
+          const pEnd = project3D(ix, 0, size + 15, rot1.x, rot1.y, cx, cy, scale);
+          ctx1.beginPath();
+          ctx1.moveTo(pStart.x, pStart.y);
+          ctx1.lineTo(pEnd.x, pEnd.y);
+          ctx1.strokeStyle = '#fbbf24';
+          ctx1.lineWidth = 3 * window.devicePixelRatio;
+          ctx1.stroke();
+
+          ctx1.fillStyle = '#fbbf24';
+          ctx1.fillText('c (лінія перетину)', pEnd.x + 6, pEnd.y);
+        }
+      }
+    }
+
+    setupCanvasRotation(c1, rot1, drawSim1);
+
+    function checkSim1Mission(num) {
+      const angle = parseInt(document.getElementById('sim1-angle').value, 10);
+      const offset = parseInt(document.getElementById('sim1-offset').value, 10);
+      if (num === 1) {
+        const fb = document.getElementById('sim1-m1-feedback');
+        fb.classList.remove('hidden');
+        if (angle === 0 && offset !== 0) {
+          state.scores.sim1_m1 = 0.75;
+          fb.className = 'text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg';
+          fb.textContent = '✓ Чудово! Кут нахилу 0°, а зсув ≠ 0: площини α і β паралельні та не мають спільних точок.';
+          recordAttempt('stage1', '3D-Площини', 'Побудовано паралельні площини α ∥ β', true);
+        } else {
+          fb.className = 'text-xs font-bold text-rose-700 bg-rose-50 p-2 rounded-lg';
+          fb.textContent = '✗ Не зовсім. Для паралельності встановіть кут нахилу 0°, а вертикальний зсув — будь-який, крім 0.';
+          recordAttempt('stage1', '3D-Площини', `Невдала спроба паралельності (кут ${angle}°, зсув ${offset})`, false);
+        }
+      } else {
+        const fb = document.getElementById('sim1-m2-feedback');
+        fb.classList.remove('hidden');
+        if (angle === 0 && offset === 0) {
+          state.scores.sim1_m2 = 0.75;
+          fb.className = 'text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg';
+          fb.textContent = '✓ Вірно! При куті 0° і зсуві 0 од. площини α і β повністю збігаються (α = β).';
+          recordAttempt('stage1', '3D-Площини', 'Досягнуто збігу площин α = β', true);
+        } else {
+          fb.className = 'text-xs font-bold text-rose-700 bg-rose-50 p-2 rounded-lg';
+          fb.textContent = '✗ Щоб площини збіглися, обидва параметри (кут і зсув) мають дорівнювати 0.';
+          recordAttempt('stage1', '3D-Площини', `Невдала спроба збігу площин (кут ${angle}°, зсув ${offset})`, false);
+        }
+      }
+    }
+
+    function checkSim1Quick(isCorrect) {
+      const fb = document.getElementById('sim1-quick-feedback');
+      fb.classList.remove('hidden');
+      if (isCorrect) {
+        state.scores.sim1_q = 0.5;
+        fb.className = 'text-xs font-bold text-emerald-800 bg-emerald-100 p-2 rounded-lg';
+        fb.textContent = '✓ Точно! За аксіомою стереометрії, якщо дві площини мають спільну точку, вони перетинаються по прямій.';
+        recordAttempt('stage1', '3D-Площини', 'Вірна відповідь про аксіому перетину площин', true);
+      } else {
+        fb.className = 'text-xs font-bold text-rose-800 bg-rose-100 p-2 rounded-lg';
+        fb.textContent = '✗ Помилка! Площини не можуть доторкнутися лише в одній точці — вони нескінченні і перетнуться по прямій.';
+        recordAttempt('stage1', '3D-Площини', 'Хибна відповідь про одну спільну точку площин', false);
+      }
+    }
+
+    // ==================== SIMULATION 2: CRITERION & PROPERTIES ====================
+    const c2 = document.getElementById('canvas-sim2');
+    const ctx2 = c2.getContext('2d');
+    const rot2 = { x: 0.45, y: -0.45 };
+    let sim2Mode = 1;
+
+    function resizeCanvas2() {
+      const rect = c2.parentElement.getBoundingClientRect();
+      c2.width = rect.width * window.devicePixelRatio;
+      c2.height = rect.height * window.devicePixelRatio;
+      drawSim2();
+    }
+
+    function setSim2Mode(mode) {
+      sim2Mode = mode;
+      [1, 2, 3].forEach(m => {
+        const btn = document.getElementById(`sim2-mode-${m}`);
+        btn.className = m === mode
+          ? 'py-2 px-2 rounded-xl text-xs font-bold bg-indigo-600 text-white transition'
+          : 'py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+      });
+      const slider = document.getElementById('sim2-slider');
+      const label = document.getElementById('sim2-slider-label');
+      if (mode === 1) {
+        label.textContent = 'Кут між прямими a₁ та b₁ у площині α:';
+        slider.min = 0; slider.max = 90; slider.value = 60;
+      } else if (mode === 2) {
+        label.textContent = 'Положення січної площини γ:';
+        slider.min = -50; slider.max = 50; slider.value = 0;
+      } else {
+        label.textContent = 'Нахил паралельних прямих A₁A₂ ∥ B₁B₂:';
+        slider.min = -35; slider.max = 35; slider.value = 15;
+      }
+      updateSim2();
+    }
+
+    function updateSim2() {
+      const val = parseInt(document.getElementById('sim2-slider').value, 10);
+      const valEl = document.getElementById('sim2-slider-val');
+      const noteEl = document.getElementById('sim2-live-note');
+
+      if (sim2Mode === 1) {
+        valEl.textContent = `${val}°`;
+        if (val === 0) {
+          noteEl.className = 'text-xs text-rose-400 mt-1.5 font-bold';
+          noteEl.textContent = '⚠️ Увага! Кут = 0°: прямі a₁ і b₁ стали паралельними! Тепер площина β може нахилитися і перетнути α!';
+        } else {
+          noteEl.className = 'text-xs text-emerald-300 mt-1.5 font-medium';
+          noteEl.textContent = '✓ Прямі a₁ ∩ b₁ = M, a₁ ∥ a₂, b₁ ∥ b₂ ⇒ за ознакою α ∥ β!';
+        }
+      } else if (sim2Mode === 2) {
+        valEl.textContent = `${val} од.`;
+        noteEl.className = 'text-xs text-cyan-300 mt-1.5 font-medium';
+        noteEl.textContent = 'Теорема 2: Січна площина γ перетинає паралельні площини α і β по паралельних прямих a ∥ b.';
+      } else {
+        valEl.textContent = `${val}°`;
+        noteEl.className = 'text-xs text-emerald-300 mt-1.5 font-medium';
+        noteEl.textContent = 'Теорема 3: Відрізки паралельних прямих між паралельними площинами рівні (A₁A₂ = B₁B₂).';
+      }
+      drawSim2();
+    }
+
+    function drawSim2() {
+      const w = c2.width, h = c2.height;
+      if (!w || !h) return;
+      ctx2.clearRect(0, 0, w, h);
+      const cx = w / 2, cy = h / 2;
+      const scale = Math.min(w, h) / 310;
+      const dpr = window.devicePixelRatio;
+      const sliderVal = parseInt(document.getElementById('sim2-slider').value, 10);
+
+      const size = 115;
+      const yTop = -55, yBot = 55;
+
+      // Helper to draw plane
+      const drawPlane = (yVal, tiltRad, fill, stroke, label) => {
+        const cosT = Math.cos(tiltRad), sinT = Math.sin(tiltRad);
+        const pts = [
+          [-size, 0, -size],
+          [size, 0, -size],
+          [size, 0, size],
+          [-size, 0, size]
+        ].map(([x, y, z]) => project3D(x * cosT, yVal + x * sinT, z, rot2.x, rot2.y, cx, cy, scale));
+
+        ctx2.beginPath();
+        pts.forEach((p, i) => i === 0 ? ctx2.moveTo(p.x, p.y) : ctx2.lineTo(p.x, p.y));
+        ctx2.closePath();
+        ctx2.fillStyle = fill;
+        ctx2.fill();
+        ctx2.strokeStyle = stroke;
+        ctx2.lineWidth = 2 * dpr;
+        ctx2.stroke();
+        ctx2.fillStyle = stroke;
+        ctx2.font = `bold ${13 * dpr}px Inter, sans-serif`;
+        ctx2.fillText(label, pts[1].x + 6, pts[1].y);
+      };
+
+      if (sim2Mode === 1) {
+        // If angle === 0, tilt top plane slightly to demonstrate failure of criterion
+        const tilt = sliderVal === 0 ? 0.35 : 0;
+        drawPlane(yTop, tilt, 'rgba(99, 102, 241, 0.22)', '#818cf8', 'α');
+        drawPlane(yBot, 0, 'rgba(16, 185, 129, 0.22)', '#34d399', 'β');
+
+        // Draw two lines in bottom plane (z=0 and rotated by sliderVal)
+        const rad = (sliderVal * Math.PI) / 180;
+        const drawLineInPlane = (yBase, tiltAngle, lineAngle, color, text) => {
+          const L = 95;
+          const xA = -L * Math.cos(lineAngle), zA = -L * Math.sin(lineAngle);
+          const xB = L * Math.cos(lineAngle), zB = L * Math.sin(lineAngle);
+          const p1 = project3D(xA * Math.cos(tiltAngle), yBase + xA * Math.sin(tiltAngle), zA, rot2.x, rot2.y, cx, cy, scale);
+          const p2 = project3D(xB * Math.cos(tiltAngle), yBase + xB * Math.sin(tiltAngle), zB, rot2.x, rot2.y, cx, cy, scale);
+          ctx2.beginPath();
+          ctx2.moveTo(p1.x, p1.y);
+          ctx2.lineTo(p2.x, p2.y);
+          ctx2.strokeStyle = color;
+          ctx2.lineWidth = 2.8 * dpr;
+          ctx2.stroke();
+          ctx2.fillStyle = color;
+          ctx2.fillText(text, p2.x + 4, p2.y);
+        };
+
+        drawLineInPlane(yTop, tilt, 0, '#fbbf24', 'a₁');
+        drawLineInPlane(yTop, tilt, rad, '#f472b6', 'b₁');
+        drawLineInPlane(yBot, 0, 0, '#fbbf24', 'a₂');
+        drawLineInPlane(yBot, 0, rad, '#f472b6', 'b₂');
+
+      } else if (sim2Mode === 2) {
+        drawPlane(yTop, 0, 'rgba(56, 189, 248, 0.2)', '#38bdf8', 'α');
+        drawPlane(yBot, 0, 'rgba(16, 185, 129, 0.2)', '#34d399', 'β');
+
+        // Cutting plane gamma (vertical-ish at x = sliderVal)
+        const gx = sliderVal;
+        const gPts = [
+          [gx - 25, yTop - 35, -size],
+          [gx + 25, yBot + 35, -size],
+          [gx + 25, yBot + 35, size],
+          [gx - 25, yTop - 35, size]
+        ].map(p => project3D(p[0], p[1], p[2], rot2.x, rot2.y, cx, cy, scale));
+
+        ctx2.beginPath();
+        gPts.forEach((p, i) => i === 0 ? ctx2.moveTo(p.x, p.y) : ctx2.lineTo(p.x, p.y));
+        ctx2.closePath();
+        ctx2.fillStyle = 'rgba(244, 114, 182, 0.25)';
+        ctx2.fill();
+        ctx2.strokeStyle = '#f472b6';
+        ctx2.lineWidth = 2 * dpr;
+        ctx2.stroke();
+
+        // Parallel intersection lines a and b
+        const tTop = (yTop - (yTop - 35)) / ((yBot + 35) - (yTop - 35));
+        const xTopInt = (gx - 25) + tTop * 50;
+        const tBot = (yBot - (yTop - 35)) / ((yBot + 35) - (yTop - 35));
+        const xBotInt = (gx - 25) + tBot * 50;
+
+        const a1 = project3D(xTopInt, yTop, -size, rot2.x, rot2.y, cx, cy, scale);
+        const a2 = project3D(xTopInt, yTop, size, rot2.x, rot2.y, cx, cy, scale);
+        const b1 = project3D(xBotInt, yBot, -size, rot2.x, rot2.y, cx, cy, scale);
+        const b2 = project3D(xBotInt, yBot, size, rot2.x, rot2.y, cx, cy, scale);
+
+        ctx2.strokeStyle = '#fbbf24';
+        ctx2.lineWidth = 3.2 * dpr;
+        ctx2.beginPath(); ctx2.moveTo(a1.x, a1.y); ctx2.lineTo(a2.x, a2.y); ctx2.stroke();
+        ctx2.beginPath(); ctx2.moveTo(b1.x, b1.y); ctx2.lineTo(b2.x, b2.y); ctx2.stroke();
+        ctx2.fillStyle = '#fbbf24';
+        ctx2.fillText('a', a2.x + 5, a2.y);
+        ctx2.fillText('b (a ∥ b)', b2.x + 5, b2.y);
+
+      } else {
+        drawPlane(yTop, 0, 'rgba(56, 189, 248, 0.2)', '#38bdf8', 'α');
+        drawPlane(yBot, 0, 'rgba(16, 185, 129, 0.2)', '#34d399', 'β');
+
+        // Two equal parallel segments
+        const shift = sliderVal * 1.3;
+        const pA1 = project3D(-45, yTop, -20, rot2.x, rot2.y, cx, cy, scale);
+        const pA2 = project3D(-45 + shift, yBot, 15, rot2.x, rot2.y, cx, cy, scale);
+        const pB1 = project3D(45, yTop, -20, rot2.x, rot2.y, cx, cy, scale);
+        const pB2 = project3D(45 + shift, yBot, 15, rot2.x, rot2.y, cx, cy, scale);
+
+        ctx2.strokeStyle = '#fbbf24';
+        ctx2.lineWidth = 3.2 * dpr;
+        ctx2.beginPath(); ctx2.moveTo(pA1.x, pA1.y); ctx2.lineTo(pA2.x, pA2.y); ctx2.stroke();
+        ctx2.beginPath(); ctx2.moveTo(pB1.x, pB1.y); ctx2.lineTo(pB2.x, pB2.y); ctx2.stroke();
+
+        ctx2.fillStyle = '#ffffff';
+        ctx2.font = `bold ${12 * dpr}px Inter, sans-serif`;
+        ctx2.fillText('A₁', pA1.x - 14, pA1.y - 6);
+        ctx2.fillText('A₂', pA2.x - 14, pA2.y + 14);
+        ctx2.fillText('B₁', pB1.x + 6, pB1.y - 6);
+        ctx2.fillText('B₂', pB2.x + 6, pB2.y + 14);
+      }
+    }
+
+    setupCanvasRotation(c2, rot2, drawSim2);
+
+    function checkSim2Exp1(isCorrect) {
+      const fb = document.getElementById('sim2-e1-feedback');
+      fb.classList.remove('hidden');
+      if (isCorrect) {
+        state.scores.sim2_e1 = 1;
+        fb.className = 'text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg';
+        fb.textContent = '✓ Браво! За ознакою прямі обов’язково мають перетинатися. Якщо вони паралельні, площини можуть перетнутися.';
+        recordAttempt('stage2', '3D-Теореми', 'Вірно проаналізовано умову перетину прямих в ознаці', true);
+      } else {
+        fb.className = 'text-xs font-bold text-rose-700 bg-rose-50 p-2 rounded-lg';
+        fb.textContent = '✗ Подивіться на 3D-модель при куті 0°: площина α нахилилася і перетнула β, хоча прямі залишилися паралельними!';
+        recordAttempt('stage2', '3D-Теореми', 'Помилка в експерименті з кутом 0° між прямими', false);
+      }
+    }
+
+    function checkSim2Exp2() {
+      const val = parseFloat(document.getElementById('sim2-exp2-input').value);
+      const fb = document.getElementById('sim2-e2-feedback');
+      fb.classList.remove('hidden');
+      if (val === 14) {
+        state.scores.sim2_e2 = 1;
+        fb.className = 'text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg';
+        fb.textContent = '✓ Правильно! Відрізки паралельних прямих, що містяться між паралельними площинами, рівні: B₁B₂ = 14 см.';
+        recordAttempt('stage2', '3D-Теореми', 'Вірно знайдено довжину відрізка B₁B₂ = 14 см', true);
+      } else {
+        fb.className = 'text-xs font-bold text-rose-700 bg-rose-50 p-2 rounded-lg';
+        fb.textContent = '✗ Спробуйте ще раз. Згадайте Теорему 3 про рівність відрізків паралельних прямих між паралельними площинами.';
+        recordAttempt('stage2', '3D-Теореми', `Невірна відповідь (${isNaN(val) ? 'порожньо' : val}) у Теоремі 3`, false);
+      }
+    }
+
+    // ==================== DRAG & DROP 1: TRUE / FALSE TRAPS ====================
+    const dnd1Items = [
+      { id: 't1', text: 'Дві площини, паралельні третій площині, паралельні між собою.', correct: 'true' },
+      { id: 't2', text: 'Якщо дві паралельні площини перетнути третьою, то лінії перетину паралельні.', correct: 'true' },
+      { id: 't3', text: 'Відрізки паралельних прямих, що містяться між паралельними площинами, рівні.', correct: 'true' },
+      { id: 'f1', text: 'Якщо пряма площини α паралельна площині β, то площини α і β паралельні.', correct: 'false' },
+      { id: 'f2', text: 'Дві площини, паралельні одній і тій самій прямій, обов’язково паралельні між собою.', correct: 'false' },
+      { id: 'f3', text: 'Якщо дві прямі площини α паралельні двом прямим площини β, то α ∥ β (навіть якщо ці прямі паралельні між собою).', correct: 'false' }
+    ];
+    let dnd1Placement = {}; // id -> 'pool' | 'true' | 'false'
+    let selectedCardId = null;
+
+    function initDnd1() {
+      dnd1Items.forEach(item => dnd1Placement[item.id] = 'pool');
+      renderDnd1();
+    }
+
+    function renderDnd1() {
+      const pool = document.getElementById('dnd1-pool');
+      const listTrue = document.getElementById('dnd1-list-true');
+      const listFalse = document.getElementById('dnd1-list-false');
+      pool.innerHTML = '';
+      listTrue.innerHTML = '';
+      listFalse.innerHTML = '';
+
+      dnd1Items.forEach(item => {
+        const div = document.createElement('div');
+        div.id = `card-${item.id}`;
+        div.draggable = true;
+        div.className = `draggable-item bg-white p-3 rounded-xl border border-slate-300 shadow-sm text-xs sm:text-sm font-medium text-slate-800 ${selectedCardId === item.id ? 'selected-card' : ''}`;
+        div.textContent = item.text;
+        div.ondragstart = (e) => {
+          e.dataTransfer.setData('text/plain', item.id);
+          selectedCardId = item.id;
+        };
+        div.onclick = (e) => {
+          e.stopPropagation();
+          selectedCardId = (selectedCardId === item.id) ? null : item.id;
+          renderDnd1();
+        };
+
+        const target = dnd1Placement[item.id];
+        if (target === 'pool') pool.appendChild(div);
+        else if (target === 'true') listTrue.appendChild(div);
+        else listFalse.appendChild(div);
+      });
+    }
+
+    function allowDrop(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add('drag-over');
+    }
+    function leaveDrop(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+    function dropDnd1(e, zone) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain') || selectedCardId;
+      if (id && dnd1Placement[id] !== undefined) {
+        dnd1Placement[id] = zone;
+        selectedCardId = null;
+        renderDnd1();
+      }
+    }
+    function handleZoneTap(system, zone) {
+      if (system === 'dnd1' && selectedCardId) {
+        dnd1Placement[selectedCardId] = zone;
+        selectedCardId = null;
+        renderDnd1();
+      }
+    }
+
+    function checkDnd1() {
+      let correctCount = 0;
+      let placedCount = 0;
+      dnd1Items.forEach(item => {
+        const p = dnd1Placement[item.id];
+        if (p !== 'pool') placedCount++;
+        if (p === item.correct) correctCount++;
+      });
+
+      const fb = document.getElementById('dnd1-feedback');
+      fb.classList.remove('hidden');
+
+      if (placedCount < dnd1Items.length) {
+        fb.className = 'p-4 rounded-2xl text-xs sm:text-sm font-bold bg-amber-50 text-amber-800 border border-amber-200';
+        fb.textContent = `⚠️ Розподіліть усі 6 карток по кошиках (залишилося: ${dnd1Items.length - placedCount}).`;
+        return;
+      }
+
+      const earned = +(correctCount * 0.5).toFixed(1);
+      state.scores.dnd1 = earned;
+
+      if (correctCount === 6) {
+        fb.className = 'p-4 rounded-2xl text-xs sm:text-sm font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+        fb.textContent = '🎉 Бездоганно! Усі 6 тверджень розпізнано правильно (3 / 3 бали).';
+        recordAttempt('stage3', 'Пастки (DnD)', 'Усі 6 тверджень розсортовано безпомилково (3/3)', true);
+      } else {
+        fb.className = 'p-4 rounded-2xl text-xs sm:text-sm font-bold bg-rose-50 text-rose-800 border border-rose-200';
+        fb.textContent = `Правильно розміщено ${correctCount} із 6 тверджень (нараховано ${earned} / 3 бали). Натисніть «Дізнайся більше», щоб перевірити пастки!`;
+        recordAttempt('stage3', 'Пастки (DnD)', `Розсортовано вірно ${correctCount} з 6 карток (${earned}/3)`, false);
+      }
+    }
+
+    function resetDnd1() {
+      selectedCardId = null;
+      initDnd1();
+      document.getElementById('dnd1-feedback').classList.add('hidden');
+    }
+
+    // ==================== DRAG & DROP 2: CUBE PROOF BUILDER ====================
+    const dnd2Blocks = [
+      { id: 'b1', text: '1) У квадраті AA₁B₁B протилежні сторони паралельні: AA₁ ∥ BB₁.' },
+      { id: 'b2', text: '2) У квадраті A₁B₁C₁D₁ протилежні сторони паралельні: A₁D₁ ∥ B₁C₁.' },
+      { id: 'b3', text: '3) Прямі AA₁ і A₁D₁ лежать у площині (AA₁D₁) та перетинаються в точці A₁.' },
+      { id: 'b4', text: '4) За ознакою паралельності площин: (AA₁D₁) ∥ (BB₁C₁), що й треба було довести.' }
+    ];
+    let dnd2Slots = [null, null, null, null];
+    let selectedBlockId = null;
+
+    function initDnd2() {
+      dnd2Slots = [null, null, null, null];
+      renderDnd2();
+    }
+
+    function renderDnd2() {
+      const pool = document.getElementById('dnd2-pool');
+      const slotsContainer = document.getElementById('dnd2-slots');
+      pool.innerHTML = '';
+      slotsContainer.innerHTML = '';
+
+      // Shuffled display order for pool
+      const displayOrder = ['b3', 'b1', 'b4', 'b2'];
+      displayOrder.forEach(id => {
+        if (dnd2Slots.includes(id)) return;
+        const blk = dnd2Blocks.find(b => b.id === id);
+        // Strip leading "1) " in pool so student orders by logic, not just number
+        const cleanText = blk.text.replace(/^\d+\)\s*/, '');
+        const div = document.createElement('div');
+        div.draggable = true;
+        div.className = `draggable-item bg-slate-50 hover:bg-indigo-50 p-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium text-slate-800 ${selectedBlockId === id ? 'selected-card' : ''}`;
+        div.textContent = cleanText;
+        div.ondragstart = (e) => {
+          e.dataTransfer.setData('text/plain', id);
+          selectedBlockId = id;
+        };
+        div.onclick = () => {
+          selectedBlockId = (selectedBlockId === id) ? null : id;
+          renderDnd2();
+        };
+        pool.appendChild(div);
+      });
+
+      for (let i = 0; i < 4; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'drop-zone p-2.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 min-h-[46px] flex items-center justify-between gap-2 cursor-pointer';
+        slot.ondragover = allowDrop;
+        slot.ondragleave = leaveDrop;
+        slot.ondrop = (e) => {
+          e.preventDefault();
+          e.currentTarget.classList.remove('drag-over');
+          const id = e.dataTransfer.getData('text/plain') || selectedBlockId;
+          if (id) {
+            dnd2Slots[i] = id;
+            selectedBlockId = null;
+            renderDnd2();
+          }
+        };
+        slot.onclick = () => {
+          if (selectedBlockId) {
+            dnd2Slots[i] = selectedBlockId;
+            selectedBlockId = null;
+            renderDnd2();
+          } else if (dnd2Slots[i]) {
+            dnd2Slots[i] = null;
+            renderDnd2();
+          }
+        };
+
+        const currentId = dnd2Slots[i];
+        if (currentId) {
+          const blk = dnd2Blocks.find(b => b.id === currentId);
+          const cleanText = blk.text.replace(/^\d+\)\s*/, '');
+          slot.classList.remove('border-dashed', 'border-slate-300');
+          slot.classList.add('border-solid', 'border-purple-400', 'bg-purple-50/60');
+          slot.innerHTML = `
+            <span class="text-xs sm:text-sm font-semibold text-slate-900"><strong class="text-purple-700">Крок ${i + 1}:</strong> ${cleanText}</span>
+            <span class="text-xs text-rose-500 font-bold shrink-0">✕</span>
+          `;
+        } else {
+          slot.innerHTML = `<span class="text-xs text-slate-400 font-medium">Крок ${i + 1}: перетягніть або натисніть блок сюди...</span>`;
+        }
+        slotsContainer.appendChild(slot);
+      }
+    }
+
+    function checkDnd2() {
+      const fb = document.getElementById('dnd2-feedback');
+      fb.classList.remove('hidden');
+
+      if (dnd2Slots.includes(null)) {
+        fb.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-50 text-amber-800 border border-amber-200';
+        fb.textContent = '⚠️ Заповніть усі 4 кроки доведення.';
+        return;
+      }
+
+      // Steps 1 and 2 can be swapped logically, Step 3 must be intersection, Step 4 must be conclusion
+      const firstTwoOk = (dnd2Slots[0] === 'b1' && dnd2Slots[1] === 'b2') || (dnd2Slots[0] === 'b2' && dnd2Slots[1] === 'b1');
+      const step3Ok = dnd2Slots[2] === 'b3';
+      const step4Ok = dnd2Slots[3] === 'b4';
+
+      if (firstTwoOk && step3Ok && step4Ok) {
+        state.scores.dnd2 = 2;
+        fb.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+        fb.textContent = '✓ Блискуче доведення! Логіка ознаки паралельності площин дотримана ідеально (2 / 2 бали).';
+        recordAttempt('stage4', 'Доведення (DnD)', 'Вірно побудовано доведення паралельності граней куба (2/2)', true);
+      } else {
+        let partial = (firstTwoOk ? 1 : 0) + (step4Ok ? 0.5 : 0);
+        state.scores.dnd2 = partial;
+        fb.className = 'p-3.5 rounded-xl text-xs sm:text-sm font-bold bg-rose-50 text-rose-800 border border-rose-200';
+        fb.textContent = `✗ Порушено логіку доведення (нараховано ${partial} / 2 бали). Спочатку вкажіть дві пари паралельних ребер, потім факт їх перетину в точці A₁, і наприкінці — висновок за ознакою.`;
+        recordAttempt('stage4', 'Доведення (DnD)', `Помилка у послідовності доведення (${partial}/2)`, false);
+      }
+    }
+
+    function resetDnd2() {
+      selectedBlockId = null;
+      initDnd2();
+      document.getElementById('dnd2-feedback').classList.add('hidden');
+    }
+
+    // ==================== STAGE 5: PRACTICE PROBLEMS ====================
+    function toggleHint(num) {
+      document.getElementById(`p${num}-hint`).classList.toggle('hidden');
+    }
+
+    function checkProblem(num, expected) {
+      const val = parseFloat(document.getElementById(`p${num}-input`).value);
+      const fb = document.getElementById(`p${num}-feedback`);
+      const st = document.getElementById(`p${num}-status`);
+      fb.classList.remove('hidden');
+
+      if (val === expected) {
+        state.scores[`p${num}`] = 1;
+        st.textContent = '✓ 1 / 1 бал';
+        st.className = 'text-xs font-bold text-emerald-600';
+        fb.className = 'text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg';
+        fb.textContent = `✓ Вірно! Відповідь: ${expected} см.`;
+        recordAttempt('stage5', 'Задачі (SVG)', `Задача ${num}: отримано вірну відповідь (${expected} см)`, true);
+      } else {
+        fb.className = 'text-xs font-bold text-rose-700 bg-rose-50 p-2 rounded-lg';
+        fb.textContent = '✗ Невірно. Скористайтеся підказкою та перевірте обчислення.';
+        recordAttempt('stage5', 'Задачі (SVG)', `Задача ${num}: невірна відповідь (${isNaN(val) ? 'порожньо' : val})`, false);
+      }
+    }
+
+    // ==================== PDF GENERATION (FULL CYRILLIC SUPPORT) ====================
+    async function generatePDFReport() {
+      updateDashboardUI();
+      const btn = document.getElementById('download-pdf-btn');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span>Формування PDF...</span>';
+
+      try {
+        const element = document.getElementById('pdf-printable-area');
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = margin;
+
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - margin * 2);
+
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight + margin;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          heightLeft -= (pageHeight - margin * 2);
+        }
+
+        const safeName = (state.studentName.trim() || 'Uchen_10_klas')
+          .replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9_-]/g, '_');
+        pdf.save(`Zvit_Paralelni_Ploshchyny_${safeName}.pdf`);
+      } catch (err) {
+        alert('Виникла помилка при створенні PDF. Спробуйте ще раз або скористайтеся друком сторінки (Ctrl+P).');
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
+    // ==================== INITIALIZATION ====================
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('tab-1').classList.contains('hidden')) resizeCanvas1();
+      if (!document.getElementById('tab-2').classList.contains('hidden')) resizeCanvas2();
+    });
+
+    initDnd1();
+    initDnd2();
+    updateDashboardUI();
+  </script>
+</body>
+</html>
